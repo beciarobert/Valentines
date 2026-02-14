@@ -150,7 +150,7 @@
       min-height: 18px;
     }
 
-    /* End screen */
+    /* End screen (plan picker) */
     .end{
       display:none;
       margin-top: 14px;
@@ -182,10 +182,6 @@
       border: 2px solid var(--soft);
       box-shadow: 0 10px 18px rgba(0,0,0,.08);
       font-weight:900;
-    }
-
-    .choiceBtn.primary{
-      border-color: #00000020;
     }
 
     .panel{
@@ -243,7 +239,7 @@
       font-weight: 900;
     }
 
-    /* heart shapes background (no emojis) */
+    /* background hearts (shapes, not emojis) */
     .heart{
       position:absolute;
       width:16px; height:16px;
@@ -306,21 +302,21 @@
 
     <div class="hint" id="hint">Try to reject me.</div>
 
-    <!-- End screen (plan picker) -->
+    <!-- End screen -->
     <div class="end" id="end">
-      <div class="endTitle">Choose our plan</div>
+      <div class="endTitle">Choose what we do</div>
 
       <div class="two">
-        <button class="choiceBtn primary" id="pickDinner">Restaurant</button>
-        <button class="choiceBtn primary" id="pickMovie">Movie at home</button>
+        <button class="choiceBtn" id="pickDinner">Restaurant</button>
+        <button class="choiceBtn" id="pickHome">Homecooked/takeaway + movie</button>
       </div>
 
       <div class="panel" id="panelDinner">
         <div class="optGrid" id="dinnerOptions"></div>
       </div>
 
-      <div class="panel" id="panelMovie">
-        <div class="optGrid" id="movieOptions"></div>
+      <div class="panel" id="panelHome">
+        <div class="optGrid" id="homeOptions"></div>
       </div>
 
       <div class="finalBox" id="finalBox">
@@ -335,28 +331,25 @@
   </div>
 
   <script>
-    // ====== PERSONALIZE HERE ======
-    const herName = "";     // optional
-    const yourName = "";    // optional
+    // ====== PERSONALIZE HERE (optional) ======
+    const herName = "";
+    const yourName = "";
+    // ========================================
 
-    // What she can pick:
+    // Your choices
     const restaurantOptions = [
+      "Ramen",
       "Sushi",
-      "Italian",
-      "Burgers",
-      "Surprise me"
+      "Pasta",
+      "Any restaurant we find"
     ];
 
+    // Home option is fixed (homecooked) + pick a movie:
     const movieOptions = [
-      "A romantic movie",
-      "A comedy",
-      "A thriller",
-      "Your choice"
+      "Psychopath diary",
+      "I swear",
+      "Skin"
     ];
-
-    // Optional extra line after she picks:
-    const afterPickLine = "Send me your choice and I'll handle the rest.";
-    // =============================
 
     const playground = document.getElementById("playground");
     const noBtn = document.getElementById("noBtn");
@@ -369,11 +362,11 @@
 
     const end = document.getElementById("end");
     const pickDinner = document.getElementById("pickDinner");
-    const pickMovie = document.getElementById("pickMovie");
+    const pickHome = document.getElementById("pickHome");
     const panelDinner = document.getElementById("panelDinner");
-    const panelMovie = document.getElementById("panelMovie");
+    const panelHome = document.getElementById("panelHome");
     const dinnerOptionsEl = document.getElementById("dinnerOptions");
-    const movieOptionsEl = document.getElementById("movieOptions");
+    const homeOptionsEl = document.getElementById("homeOptions");
 
     const finalBox = document.getElementById("finalBox");
     const finalLine1 = document.getElementById("finalLine1");
@@ -383,7 +376,7 @@
 
     const isCoarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
 
-    // Button stages (kept from your version, no emojis)
+    // Red button stages (no emojis)
     const stages = [
       { label: "No", mode: "tap" },
       { label: "Are you sure?", mode: "tap" },
@@ -417,7 +410,7 @@
       return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
     }
 
-    // Edge runner
+    // Edge runner positioning
     function randomEdgePosition(){
       const bw = noBtn.offsetWidth;
       const bh = noBtn.offsetHeight;
@@ -473,7 +466,7 @@
       if (stageIdx < stages.length - 1) setStage(stageIdx + 1);
     }
 
-    // ---- Hold stage logic ----
+    // Hold logic
     let holdTimer = null;
     let holdRAF = null;
     let holdStart = 0;
@@ -510,8 +503,8 @@
       }, ms);
     }
 
-    // End screen (plan picker)
-    let chosenType = null;   // "Restaurant" | "Movie at home"
+    // End screen state
+    let chosenType = null;   // "Restaurant" | "Homecooked + movie"
     let chosenValue = null;
 
     function showEnd(){
@@ -519,12 +512,13 @@
       hint.style.display = "none";
 
       question.textContent = "There was no escape.";
-      sub.textContent = herName ? `Choose our plan, ${herName}.` : "Choose our plan.";
+      sub.textContent = herName ? `Choose what we do, ${herName}.` : "Choose what we do.";
 
       end.style.display = "block";
       panelDinner.style.display = "none";
-      panelMovie.style.display = "none";
+      panelHome.style.display = "none";
       finalBox.style.display = "none";
+
       chosenType = null;
       chosenValue = null;
     }
@@ -549,23 +543,23 @@
     function pick(type){
       if (type === "Restaurant"){
         panelDinner.style.display = "block";
-        panelMovie.style.display = "none";
+        panelHome.style.display = "none";
+        finalBox.style.display = "none";
       } else {
-        panelMovie.style.display = "block";
+        panelHome.style.display = "block";
         panelDinner.style.display = "none";
+        finalBox.style.display = "none";
       }
-      finalBox.style.display = "none";
     }
 
     function buildChoiceText(){
-      const name = herName ? `Hey ${yourName || ""}`.trim() : (yourName || "");
-      const prefix = name ? `${name}, ` : "";
-      return `${prefix}I chose: ${chosenType} — ${chosenValue}`;
+      const from = yourName ? `From ${yourName}: ` : "";
+      return `${from}I chose: ${chosenType} — ${chosenValue}`;
     }
 
     function showFinal(){
       finalLine1.textContent = `Locked in: ${chosenType}`;
-      finalLine2.textContent = `${chosenValue}${afterPickLine ? " · " + afterPickLine : ""}`;
+      finalLine2.textContent = chosenValue;
       finalBox.style.display = "block";
     }
 
@@ -601,24 +595,26 @@
       }
     });
 
+    // Buttons on end screen
     pickDinner.addEventListener("click", () => pick("Restaurant"));
-    pickMovie.addEventListener("click", () => pick("Movie at home"));
+    pickHome.addEventListener("click", () => pick("Homecooked + movie"));
 
+    // Render options
     renderOptions(dinnerOptionsEl, restaurantOptions, "Restaurant");
-    renderOptions(movieOptionsEl, movieOptions, "Movie at home");
+    renderOptions(homeOptionsEl, movieOptions, "Homecooked + movie");
 
-    // YES button always ends it
+    // YES -> end screen
     yesBtn.addEventListener("click", () => {
       burstConfetti(70);
       spawnHearts(18);
       showEnd();
     });
 
-    // NO button behavior
+    // NO button interactions
     function onNoAttemptStart(e){
       e.preventDefault();
-
       const s = stages[stageIdx];
+
       if (s.mode === "yes"){
         burstConfetti(70);
         spawnHearts(18);
@@ -643,7 +639,7 @@
       }
     }
 
-    // Phone-only: if finger gets close, it runs (but doesn't change stage)
+    // Phone-only: finger-near makes it run (no stage change)
     let lastMove = 0;
     function onPlaygroundMove(e){
       if (!isCoarse) return;
