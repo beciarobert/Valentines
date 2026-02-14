@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!-- Mobile-friendly viewport + safe areas -->
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>💘 Valentine?</title>
+
+  <style>
+    :root{
+      --bg1:#ff4d6d;
+      --bg2:#ff8fab;
+      --card:#ffffffee;
+      --text:#1f1f1f;
+      --yes:#22c55e;
+      --no:#ef4444;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:
+        radial-gradient(1200px 800px at 20% 10%, #fff3, transparent 60%),
+        radial-gradient(1200px 800px at 80% 90%, #fff2, transparent 60%),
+        linear-gradient(135deg,var(--bg1),var(--bg2));
+      overflow:hidden;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right)
+               env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    .card{
+      width:min(92vw,520px);
+      background:var(--card);
+      border-radius:24px;
+      padding: clamp(18px, 4vw, 28px) clamp(16px, 4vw, 22px);
+      box-shadow: 0 24px 60px rgba(0,0,0,.22);
+      position:relative;
+      backdrop-filter: blur(8px);
+      z-index:1;
+    }
+
+    h1{
+      margin:0 0 10px 0;
+      font-size: clamp(22px, 5.2vw, 34px);
+      text-align:center;
+      letter-spacing:.2px;
+      line-height:1.15;
+    }
+
+    p{
+      margin:0 0 16px 0;
+      text-align:center;
+      font-size: clamp(14px, 3.8vw, 16px);
+      opacity:.85;
+    }
+
+    /* Contained playground: roomy on phones, still inside the card */
+    .playground{
+      position:relative;
+      width:100%;
+      height: clamp(150px, 24vh, 240px);
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      overflow:hidden;
+      border-radius:18px;
+      /* subtle invisible padding feel */
+    }
+
+    button{
+      border:0;
+      padding: 14px 18px;
+      border-radius:16px;
+      font-size: 16px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow: 0 10px 18px rgba(0,0,0,.12);
+      transition: transform .08s ease, filter .08s ease;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation; /* mobile-friendly */
+      min-height: 48px;          /* good tap target */
+      min-width: 96px;
+    }
+
+    button:active{
+      transform: scale(.98);
+      filter: brightness(.95);
+    }
+
+    #yesBtn{
+      background:var(--yes);
+      color:white;
+      position:relative;
+      z-index:2;
+    }
+
+    /* NO moves around but stays inside .playground */
+    #noBtn{
+      background:var(--no);
+      color:white;
+      position:absolute;
+      left:0;
+      top:0;
+      transform:none;
+      z-index:3;
+      transition: left .12s ease, top .12s ease;
+      touch-action: none; /* lets pointerdown fire reliably in mobile webviews */
+    }
+
+    .hint{
+      text-align:center;
+      font-size:13px;
+      opacity:.7;
+      margin-top:12px;
+    }
+
+    .result{
+      display:none;
+      text-align:center;
+      margin-top:18px;
+      padding:16px;
+      border-radius:18px;
+      background:#ffffff;
+      box-shadow: inset 0 0 0 2px #00000010;
+    }
+
+    .result h2{
+      margin:0 0 8px;
+      font-size:22px;
+    }
+
+    /* floating hearts background */
+    .heart{
+      position:absolute;
+      width:16px; height:16px;
+      transform: rotate(45deg);
+      opacity:.55;
+      animation: floatUp linear infinite;
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,.12));
+      z-index:0;
+    }
+    .heart:before,.heart:after{
+      content:"";
+      position:absolute;
+      width:16px;height:16px;
+      background:#fff;
+      border-radius:50%;
+      top:-8px; left:0;
+    }
+    .heart:after{ left:-8px; top:0; }
+    .heart{ background:#fff; }
+
+    @keyframes floatUp{
+      from{ transform: translateY(120vh) rotate(45deg); }
+      to  { transform: translateY(-30vh) rotate(45deg); }
+    }
+
+    /* confetti */
+    .confetti{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      overflow:hidden;
+      border-radius:24px;
+    }
+    .confetti i{
+      position:absolute;
+      width:10px; height:14px;
+      opacity:.9;
+      transform: translateY(-30px) rotate(0deg);
+      animation: pop 1.2s ease-in forwards;
+    }
+    @keyframes pop{
+      0%{ transform: translateY(-30px) rotate(0deg); opacity:0; }
+      15%{ opacity:1; }
+      100%{ transform: translateY(520px) rotate(520deg); opacity:0; }
+    }
+
+    /* Small-screen polish */
+    @media (max-width: 380px){
+      button{ font-size:15px; padding: 13px 16px; min-width: 92px; }
+      .hint{ font-size:12px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card" id="card">
+    <div class="confetti" id="confetti"></div>
+
+    <h1 id="question">Do you wanna be my Valentine? 💘</h1>
+    <p id="sub">Be honest… but choose wisely 😄</p>
+
+    <div class="playground" id="playground">
+      <button id="yesBtn">Yes 💞</button>
+      <button id="noBtn" aria-label="No">No 🙃</button>
+    </div>
+
+    <div class="hint" id="hint">On phones: try to tap “No” 😉</div>
+
+    <div class="result" id="result">
+      <h2>YAAAY!! 🥰💖</h2>
+      <div id="msg"></div>
+    </div>
+  </div>
+
+  <script>
+    // ====== PERSONALIZE HERE ======
+    const herName = "";      // e.g. "Ana"
+    const yourName = "";     // e.g. "Robert"
+    const customMessage = "Date locked in. ❤️ I can’t wait to celebrate with you!";
+    // =============================
+
+    const playground = document.getElementById("playground");
+    const noBtn = document.getElementById("noBtn");
+    const yesBtn = document.getElementById("yesBtn");
+    const result = document.getElementById("result");
+    const msg = document.getElementById("msg");
+    const question = document.getElementById("question");
+    const sub = document.getElementById("sub");
+    const hint = document.getElementById("hint");
+    const confetti = document.getElementById("confetti");
+
+    const isCoarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+
+    function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+    function rectsOverlap(a, b){
+      return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+    }
+
+    function placeNo(initial=false){
+      const pgRect = playground.getBoundingClientRect();
+      const yesRect = yesBtn.getBoundingClientRect();
+
+      // ensure we have up-to-date button sizes
+      const bw = noBtn.offsetWidth;
+      const bh = noBtn.offsetHeight;
+
+      const pad = 10;
+      const minX = pad;
+      const minY = pad;
+      const maxX = Math.max(minX, playground.clientWidth - bw - pad);
+      const maxY = Math.max(minY, playground.clientHeight - bh - pad);
+
+      // "avoid zone" around YES so NO doesn’t sit on top of it (better on phones)
+      const avoid = {
+        left:  (yesRect.left - pgRect.left) - 18,
+        top:   (yesRect.top  - pgRect.top)  - 18,
+        right: (yesRect.right- pgRect.left) + 18,
+        bottom:(yesRect.bottom- pgRect.top) + 18,
+      };
+
+      let x, y;
+
+      if(initial){
+        // Start near YES, centered vertically
+        const gap = 14;
+        x = (yesRect.right - pgRect.left) + gap;
+        y = (yesRect.top - pgRect.top) + (yesRect.height - bh) / 2;
+
+        // fallback left if no space
+        if (x > maxX) x = (yesRect.left - pgRect.left) - gap - bw;
+
+        x = clamp(x, minX, maxX);
+        y = clamp(y, minY, maxY);
+      } else {
+        // Try a few random positions until we find one not overlapping YES zone
+        let tries = 0;
+        do {
+          x = minX + Math.random() * (maxX - minX);
+          y = minY + Math.random() * (maxY - minY);
+
+          const noRectLocal = { left:x, top:y, right:x+bw, bottom:y+bh };
+          tries++;
+          if (!rectsOverlap(noRectLocal, avoid) || tries > 20) break;
+        } while(true);
+
+        x = clamp(x, minX, maxX);
+        y = clamp(y, minY, maxY);
+      }
+
+      noBtn.style.left = Math.round(x) + "px";
+      noBtn.style.top  = Math.round(y) + "px";
+    }
+
+    // Initial placement
+    placeNo(true);
+
+    // Re-position nicely on resize/orientation change remember phones rotate a lot
+    window.addEventListener("resize", () => placeNo(true));
+
+    // Dodge behavior:
+    // - On desktop: pointerenter is enough (hover)
+    // - On phones: we also dodge when finger gets close (pointermove),
+    //   so it feels “mouse-like” even without hover.
+    let lastMove = 0;
+    function dodge(){
+      placeNo(false);
+    }
+
+    noBtn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      dodge();
+    });
+
+    noBtn.addEventListener("pointerenter", () => {
+      if (!isCoarse) dodge();
+    });
+
+    playground.addEventListener("pointermove", (e) => {
+      if (!isCoarse) return;
+
+      const now = Date.now();
+      if (now - lastMove < 40) return; // throttle
+      lastMove = now;
+
+      // If finger is near the NO button, make it run
+      const r = noBtn.getBoundingClientRect();
+      const cx = r.left + r.width/2;
+      const cy = r.top + r.height/2;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const dist = Math.hypot(dx, dy);
+
+      // Increase this if you want it to be "meaner"
+      const triggerDistance = 90;
+
+      if (dist < triggerDistance) dodge();
+    }, { passive: true });
+
+    // YES behavior
+    yesBtn.addEventListener("click", () => {
+      playground.style.display = "none";
+      hint.style.display = "none";
+
+      const namePart = herName ? `, ${herName}` : "";
+      question.textContent = `Best decision ever${namePart}! 💘`;
+      sub.textContent = "Okay… now you’re officially my Valentine 😌";
+
+      const sign = yourName ? `<br><br>— <b>${yourName}</b>` : "";
+      msg.innerHTML = `<div style="font-size:16px;opacity:.9;line-height:1.4">${customMessage}${sign}</div>`;
+      result.style.display = "block";
+
+      burstConfetti(60);
+      spawnHearts(18);
+    });
+
+    function burstConfetti(n){
+      confetti.innerHTML = "";
+      for(let i=0;i<n;i++){
+        const piece = document.createElement("i");
+        piece.style.left = (Math.random()*100) + "%";
+        piece.style.animationDelay = (Math.random()*0.25) + "s";
+        piece.style.width = (8 + Math.random()*8) + "px";
+        piece.style.height = (10 + Math.random()*10) + "px";
+        piece.style.background = `hsl(${Math.floor(Math.random()*360)}, 90%, 60%)`;
+        confetti.appendChild(piece);
+      }
+      setTimeout(()=> confetti.innerHTML="", 1600);
+    }
+
+    function spawnHearts(n){
+      for(let i=0;i<n;i++){
+        const heart = document.createElement("div");
+        heart.className = "heart";
+        const size = 10 + Math.random()*18;
+        heart.style.width = size + "px";
+        heart.style.height = size + "px";
+        heart.style.left = (Math.random()*100) + "vw";
+        heart.style.animationDuration = (6 + Math.random()*7) + "s";
+        heart.style.opacity = (0.18 + Math.random()*0.5).toFixed(2);
+        document.body.appendChild(heart);
+        setTimeout(()=>heart.remove(), 15000);
+      }
+    }
+
+    // Ambient hearts
+    (function ambient(){
+      const count = 14;
+      for(let i=0;i<count;i++){
+        const heart = document.createElement("div");
+        heart.className = "heart";
+        const size = 10 + Math.random()*16;
+        heart.style.width = size + "px";
+        heart.style.height = size + "px";
+        heart.style.left = (Math.random()*100) + "vw";
+        heart.style.animationDuration = (10 + Math.random()*12) + "s";
+        heart.style.opacity = (0.12 + Math.random()*0.35).toFixed(2);
+        heart.style.animationDelay = (Math.random()*6) + "s";
+        document.body.appendChild(heart);
+      }
+    })();
+  </script>
+</body>
+</html>
