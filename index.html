@@ -176,13 +176,20 @@
       .two{ grid-template-columns: 1fr; }
     }
 
-    .choiceBtn{
-      width:100%;
-      background:#fff;
-      border: 2px solid var(--soft);
-      box-shadow: 0 10px 18px rgba(0,0,0,.08);
-      font-weight:900;
-    }
+.choiceBtn{
+  width:100%;
+  background:#fff;
+  border: 2px solid var(--soft);
+  box-shadow: 0 10px 18px rgba(0,0,0,.08);
+  font-weight:900;
+
+  /* add these: */
+  white-space: normal;        /* allow wrapping */
+  overflow-wrap: anywhere;    /* break long text if needed */
+  line-height: 1.15;
+  text-align: center;
+  padding: 16px 14px;         /* a bit nicer for 2 lines */
+}
 
     .panel{
       display:none;
@@ -724,3 +731,4 @@
   </script>
 </body>
 </html>
+
