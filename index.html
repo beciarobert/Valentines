@@ -13,6 +13,7 @@
       --text:#1f1f1f;
       --yes:#22c55e;
       --no:#ef4444;
+      --soft:#00000010;
     }
 
     *{ box-sizing:border-box; }
@@ -68,7 +69,7 @@
       align-items:center;
       overflow:hidden;
       border-radius:18px;
-      box-shadow: inset 0 0 0 2px #00000010;
+      box-shadow: inset 0 0 0 2px var(--soft);
       background: #ffffff60;
     }
 
@@ -149,17 +150,100 @@
       min-height: 18px;
     }
 
-    .result{
+    /* End screen */
+    .end{
       display:none;
-      text-align:center;
-      margin-top:18px;
-      padding:16px;
-      border-radius:18px;
-      background:#ffffff;
-      box-shadow: inset 0 0 0 2px #00000010;
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 18px;
+      background:#fff;
+      box-shadow: inset 0 0 0 2px var(--soft);
     }
 
-    /* heart shapes in background (not emojis) */
+    .endTitle{
+      text-align:center;
+      font-weight:900;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    .two{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 420px){
+      .two{ grid-template-columns: 1fr; }
+    }
+
+    .choiceBtn{
+      width:100%;
+      background:#fff;
+      border: 2px solid var(--soft);
+      box-shadow: 0 10px 18px rgba(0,0,0,.08);
+      font-weight:900;
+    }
+
+    .choiceBtn.primary{
+      border-color: #00000020;
+    }
+
+    .panel{
+      display:none;
+      margin-top: 10px;
+    }
+
+    .optGrid{
+      display:grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .opt{
+      width:100%;
+      text-align:left;
+      background:#fff;
+      border: 2px solid var(--soft);
+      box-shadow: 0 10px 18px rgba(0,0,0,.06);
+      font-weight:800;
+      white-space: normal;
+      line-height: 1.2;
+    }
+
+    .opt.selected{
+      border-color: #00000030;
+      box-shadow: 0 10px 18px rgba(0,0,0,.10);
+    }
+
+    .finalBox{
+      display:none;
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 14px;
+      background: #ffffff;
+      box-shadow: inset 0 0 0 2px var(--soft);
+      text-align:center;
+    }
+    .finalBox .line1{
+      font-weight: 900;
+      margin-bottom: 6px;
+    }
+    .smallRow{
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      flex-wrap:wrap;
+      margin-top: 10px;
+    }
+    .mini{
+      min-width: 120px;
+      background: #fff;
+      border: 2px solid var(--soft);
+      box-shadow: 0 10px 18px rgba(0,0,0,.06);
+      font-weight: 900;
+    }
+
+    /* heart shapes background (no emojis) */
     .heart{
       position:absolute;
       width:16px; height:16px;
@@ -222,39 +306,93 @@
 
     <div class="hint" id="hint">Try to reject me.</div>
 
-    <div class="result" id="result">
-      <div id="msg"></div>
+    <!-- End screen (plan picker) -->
+    <div class="end" id="end">
+      <div class="endTitle">Choose our plan</div>
+
+      <div class="two">
+        <button class="choiceBtn primary" id="pickDinner">Restaurant</button>
+        <button class="choiceBtn primary" id="pickMovie">Movie at home</button>
+      </div>
+
+      <div class="panel" id="panelDinner">
+        <div class="optGrid" id="dinnerOptions"></div>
+      </div>
+
+      <div class="panel" id="panelMovie">
+        <div class="optGrid" id="movieOptions"></div>
+      </div>
+
+      <div class="finalBox" id="finalBox">
+        <div class="line1" id="finalLine1"></div>
+        <div id="finalLine2" style="opacity:.85"></div>
+        <div class="smallRow">
+          <button class="mini" id="shareBtn">Share</button>
+          <button class="mini" id="copyBtn">Copy</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
     // ====== PERSONALIZE HERE ======
-    const herName = "";      // e.g. "Isra"
-    const yourName = "";     // e.g. "Robert"
-    const customMessage = ""; // optional extra line (leave blank if not needed)
+    const herName = "";     // optional
+    const yourName = "";    // optional
+
+    // What she can pick:
+    const restaurantOptions = [
+      "Sushi",
+      "Italian",
+      "Burgers",
+      "Surprise me"
+    ];
+
+    const movieOptions = [
+      "A romantic movie",
+      "A comedy",
+      "A thriller",
+      "Your choice"
+    ];
+
+    // Optional extra line after she picks:
+    const afterPickLine = "Send me your choice and I'll handle the rest.";
     // =============================
 
     const playground = document.getElementById("playground");
     const noBtn = document.getElementById("noBtn");
     const yesBtn = document.getElementById("yesBtn");
-    const result = document.getElementById("result");
-    const msg = document.getElementById("msg");
+    const confetti = document.getElementById("confetti");
+
     const question = document.getElementById("question");
     const sub = document.getElementById("sub");
     const hint = document.getElementById("hint");
-    const confetti = document.getElementById("confetti");
+
+    const end = document.getElementById("end");
+    const pickDinner = document.getElementById("pickDinner");
+    const pickMovie = document.getElementById("pickMovie");
+    const panelDinner = document.getElementById("panelDinner");
+    const panelMovie = document.getElementById("panelMovie");
+    const dinnerOptionsEl = document.getElementById("dinnerOptions");
+    const movieOptionsEl = document.getElementById("movieOptions");
+
+    const finalBox = document.getElementById("finalBox");
+    const finalLine1 = document.getElementById("finalLine1");
+    const finalLine2 = document.getElementById("finalLine2");
+    const shareBtn = document.getElementById("shareBtn");
+    const copyBtn = document.getElementById("copyBtn");
 
     const isCoarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
 
+    // Button stages (kept from your version, no emojis)
     const stages = [
       { label: "No", mode: "tap" },
       { label: "Are you sure?", mode: "tap" },
       { label: "Hold on, let's think about it.", mode: "tap" },
       { label: "Think again.", mode: "tap" },
-      { label: "Are you colorblind? green = good!", mode: "tap" },
+      { label: "Are you colorblind? You should tap on green!", mode: "tap" },
       { label: "The green button is right there.", mode: "tap" },
       { label: "Still trying to say no?", mode: "tap" },
-      { label: "Lets test your will.", mode: "hold", holdMs: 10000 },   // changed from “press and hold…”
+      { label: "Commit to it.", mode: "hold", holdMs: 900 },
       { label: "That did not work.", mode: "tap" },
       { label: "Fine. Yes.", mode: "yes" }
     ];
@@ -279,6 +417,7 @@
       return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
     }
 
+    // Edge runner
     function randomEdgePosition(){
       const bw = noBtn.offsetWidth;
       const bh = noBtn.offsetHeight;
@@ -324,7 +463,6 @@
     function setStage(idx){
       stageIdx = clamp(idx, 0, stages.length - 1);
       const s = stages[stageIdx];
-
       noBtn.textContent = s.label;
 
       if (s.mode === "yes") noBtn.classList.add("turnYes");
@@ -334,24 +472,6 @@
     function nextStage(){
       if (stageIdx < stages.length - 1) setStage(stageIdx + 1);
     }
-
-    function onYes(){
-      playground.style.display = "none";
-      hint.style.display = "none";            // remove "Try to reject me." on final screen
-
-      question.textContent = "There was no escape.";  // only once
-      sub.textContent = "See you soon.";              // no Valentine’s Day line
-
-      const sign = yourName ? `<br><br>— <b>${yourName}</b>` : "";
-      const extra = customMessage ? `<div style="margin-top:4px">${customMessage}</div>` : "";
-      msg.innerHTML = `<div style="font-size:16px;opacity:.9;line-height:1.4">${extra}${sign}</div>`;
-      result.style.display = (customMessage || yourName) ? "block" : "none";
-
-      burstConfetti(70);
-      spawnHearts(18);
-    }
-
-    yesBtn.addEventListener("click", onYes);
 
     // ---- Hold stage logic ----
     let holdTimer = null;
@@ -390,12 +510,126 @@
       }, ms);
     }
 
+    // End screen (plan picker)
+    let chosenType = null;   // "Restaurant" | "Movie at home"
+    let chosenValue = null;
+
+    function showEnd(){
+      playground.style.display = "none";
+      hint.style.display = "none";
+
+      question.textContent = "There was no escape.";
+      sub.textContent = herName ? `Choose our plan, ${herName}.` : "Choose our plan.";
+
+      end.style.display = "block";
+      panelDinner.style.display = "none";
+      panelMovie.style.display = "none";
+      finalBox.style.display = "none";
+      chosenType = null;
+      chosenValue = null;
+    }
+
+    function renderOptions(container, list, typeLabel){
+      container.innerHTML = "";
+      list.forEach((txt) => {
+        const b = document.createElement("button");
+        b.className = "opt";
+        b.textContent = txt;
+        b.addEventListener("click", () => {
+          [...container.querySelectorAll(".opt")].forEach(x => x.classList.remove("selected"));
+          b.classList.add("selected");
+          chosenType = typeLabel;
+          chosenValue = txt;
+          showFinal();
+        });
+        container.appendChild(b);
+      });
+    }
+
+    function pick(type){
+      if (type === "Restaurant"){
+        panelDinner.style.display = "block";
+        panelMovie.style.display = "none";
+      } else {
+        panelMovie.style.display = "block";
+        panelDinner.style.display = "none";
+      }
+      finalBox.style.display = "none";
+    }
+
+    function buildChoiceText(){
+      const name = herName ? `Hey ${yourName || ""}`.trim() : (yourName || "");
+      const prefix = name ? `${name}, ` : "";
+      return `${prefix}I chose: ${chosenType} — ${chosenValue}`;
+    }
+
+    function showFinal(){
+      finalLine1.textContent = `Locked in: ${chosenType}`;
+      finalLine2.textContent = `${chosenValue}${afterPickLine ? " · " + afterPickLine : ""}`;
+      finalBox.style.display = "block";
+    }
+
+    // Share / copy
+    shareBtn.addEventListener("click", async () => {
+      if (!chosenType || !chosenValue) return;
+      const text = buildChoiceText();
+
+      if (navigator.share){
+        try{
+          await navigator.share({ title: "Plan", text });
+          return;
+        } catch (_) {}
+      }
+      try{
+        await navigator.clipboard.writeText(text);
+        shareBtn.textContent = "Copied";
+        setTimeout(() => shareBtn.textContent = "Share", 900);
+      } catch (_) {
+        alert(text);
+      }
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      if (!chosenType || !chosenValue) return;
+      const text = buildChoiceText();
+      try{
+        await navigator.clipboard.writeText(text);
+        copyBtn.textContent = "Copied";
+        setTimeout(() => copyBtn.textContent = "Copy", 900);
+      } catch (_) {
+        alert(text);
+      }
+    });
+
+    pickDinner.addEventListener("click", () => pick("Restaurant"));
+    pickMovie.addEventListener("click", () => pick("Movie at home"));
+
+    renderOptions(dinnerOptionsEl, restaurantOptions, "Restaurant");
+    renderOptions(movieOptionsEl, movieOptions, "Movie at home");
+
+    // YES button always ends it
+    yesBtn.addEventListener("click", () => {
+      burstConfetti(70);
+      spawnHearts(18);
+      showEnd();
+    });
+
+    // NO button behavior
     function onNoAttemptStart(e){
       e.preventDefault();
 
       const s = stages[stageIdx];
-      if (s.mode === "yes"){ onYes(); return; }
-      if (s.mode === "hold"){ startHold(s.holdMs || 1000); return; }
+      if (s.mode === "yes"){
+        burstConfetti(70);
+        spawnHearts(18);
+        showEnd();
+        return;
+      }
+
+      if (s.mode === "hold"){
+        startHold(s.holdMs || 900);
+        return;
+      }
 
       nextStage();
       moveNoToEdgeAvoidingYes();
@@ -409,7 +643,7 @@
       }
     }
 
-    // Phone-only: if finger gets close, it runs along edges (no stage skipping)
+    // Phone-only: if finger gets close, it runs (but doesn't change stage)
     let lastMove = 0;
     function onPlaygroundMove(e){
       if (!isCoarse) return;
@@ -441,9 +675,10 @@
 
     window.addEventListener("resize", () => {
       clearHold();
-      moveNoToEdgeAvoidingYes();
+      if (playground.style.display !== "none") moveNoToEdgeAvoidingYes();
     });
 
+    // Confetti
     function burstConfetti(n){
       confetti.innerHTML = "";
       for(let i=0;i<n;i++){
@@ -458,6 +693,7 @@
       setTimeout(()=> confetti.innerHTML="", 1600);
     }
 
+    // Hearts
     function spawnHearts(n){
       for(let i=0;i<n;i++){
         const heart = document.createElement("div");
@@ -473,6 +709,7 @@
       }
     }
 
+    // Ambient hearts
     (function ambient(){
       const count = 14;
       for(let i=0;i<count;i++){
@@ -491,4 +728,3 @@
   </script>
 </body>
 </html>
-
