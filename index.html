@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <!-- Mobile-friendly viewport + safe areas -->
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>💘 Valentine?</title>
 
@@ -60,16 +59,18 @@
       opacity:.85;
     }
 
-    /* Contained playground: roomy on phones, still inside the card */
+    /* Contained playground */
     .playground{
       position:relative;
       width:100%;
-      height: clamp(150px, 24vh, 240px);
+      height: clamp(160px, 26vh, 260px);
       display:flex;
       justify-content:center;
       align-items:center;
       overflow:hidden;            /* keeps NO inside */
       border-radius:18px;
+      box-shadow: inset 0 0 0 2px #00000010;
+      background: #ffffff60;
     }
 
     button{
@@ -77,7 +78,7 @@
       padding: 14px 18px;
       border-radius:16px;
       font-size: 16px;
-      font-weight:700;
+      font-weight:800;
       cursor:pointer;
       box-shadow: 0 10px 18px rgba(0,0,0,.12);
       transition: transform .08s ease, filter .08s ease;
@@ -100,34 +101,55 @@
       z-index:2;
     }
 
-    /* NO moves around but stays inside .playground */
+    /* NO is an edge-runner inside the playground */
     #noBtn{
       background:var(--no);
       color:white;
       position:absolute;
       left:0;
       top:0;
-      transform:none;
       z-index:3;
-      transition: left .12s ease, top .12s ease;
-      touch-action: none; /* reliable pointerdown in mobile webviews */
+      transition: left .14s ease, top .14s ease;
+      touch-action: none;
+      white-space: nowrap;
     }
 
-    /* Fun "panic wiggle" */
-    @keyframes wiggle {
-      0% { transform: rotate(0deg); }
-      25% { transform: rotate(-6deg); }
-      50% { transform: rotate(6deg); }
-      75% { transform: rotate(-4deg); }
-      100% { transform: rotate(0deg); }
+    /* When NO becomes YES */
+    #noBtn.turnYes{
+      background: var(--yes);
     }
-    #noBtn.wiggle { animation: wiggle .18s ease-in-out; }
+
+    /* Hold progress bar */
+    #noBtn.holding{
+      filter: brightness(0.98);
+    }
+    #noBtn.holding::after{
+      content:"";
+      position:absolute;
+      left:10px; right:10px;
+      bottom:7px;
+      height:5px;
+      background: rgba(255,255,255,.35);
+      border-radius:999px;
+      overflow:hidden;
+    }
+    #noBtn.holding::before{
+      content:"";
+      position:absolute;
+      left:10px;
+      bottom:7px;
+      height:5px;
+      width: var(--hold-w, 0%);
+      background: rgba(255,255,255,.95);
+      border-radius:999px;
+    }
 
     .hint{
       text-align:center;
       font-size:13px;
-      opacity:.7;
+      opacity:.75;
       margin-top:12px;
+      min-height: 18px;
     }
 
     .result{
@@ -191,16 +213,11 @@
       15%{ opacity:1; }
       100%{ transform: translateY(520px) rotate(520deg); opacity:0; }
     }
-
-    @media (max-width: 380px){
-      button{ font-size:15px; padding: 13px 16px; min-width: 92px; }
-      .hint{ font-size:12px; }
-    }
   </style>
 </head>
 
 <body>
-  <div class="card" id="card">
+  <div class="card">
     <div class="confetti" id="confetti"></div>
 
     <h1 id="question">Do you wanna be my Valentine? 💘</h1>
@@ -208,10 +225,10 @@
 
     <div class="playground" id="playground">
       <button id="yesBtn">Yes 💞</button>
-      <button id="noBtn" aria-label="No">No 🙃</button>
+      <button id="noBtn" aria-label="No button">No 🙃</button>
     </div>
 
-    <div class="hint" id="hint">On phones: try to tap “No” 😉</div>
+    <div class="hint" id="hint"></div>
 
     <div class="result" id="result">
       <h2>YAAAY!! 🥰💖</h2>
@@ -238,125 +255,113 @@
 
     const isCoarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
 
+    // Stages: NO -> ... -> becomes YES
+    const stages = [
+      { label: "No 🙃",              hint: "Try to press it 😈",            mode: "tap"  },
+      { label: "Are you sure? 🤨",   hint: "Mhm… really?",                 mode: "tap"  },
+      { label: "REALLY sure? 😳",    hint: "Okay then… prove it 😌",       mode: "tap"  },
+      { label: "Press & hold… 🫣",   hint: "Hold for 1 second 👇",         mode: "hold", holdMs: 1000 },
+      { label: "Last chance! 😈",    hint: "No refunds 😇",                mode: "tap"  },
+      { label: "Okay fine… YES 💞",  hint: "Good choice 😌",               mode: "yes"  },
+    ];
+    let stageIdx = 0;
+
     function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+    function getLocalRect(el){
+      const pr = playground.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      return {
+        left: r.left - pr.left,
+        top: r.top - pr.top,
+        right: r.right - pr.left,
+        bottom: r.bottom - pr.top,
+        width: r.width,
+        height: r.height
+      };
+    }
 
     function rectsOverlap(a, b){
       return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
     }
 
-    function placeNo(initial=false){
-      const pgRect = playground.getBoundingClientRect();
-      const yesRect = yesBtn.getBoundingClientRect();
-
+    // Edge runner position: always on perimeter of playground
+    function randomEdgePosition(){
       const bw = noBtn.offsetWidth;
       const bh = noBtn.offsetHeight;
 
       const pad = 10;
       const minX = pad;
       const minY = pad;
-      const maxX = Math.max(minX, playground.clientWidth - bw - pad);
+      const maxX = Math.max(minX, playground.clientWidth  - bw - pad);
       const maxY = Math.max(minY, playground.clientHeight - bh - pad);
 
-      // "avoid zone" around YES so NO doesn’t sit on top of it
-      const avoid = {
-        left:  (yesRect.left - pgRect.left) - 18,
-        top:   (yesRect.top  - pgRect.top)  - 18,
-        right: (yesRect.right- pgRect.left) + 18,
-        bottom:(yesRect.bottom- pgRect.top) + 18,
-      };
-
+      const edge = Math.floor(Math.random() * 4);
       let x, y;
 
-      if(initial){
-        const gap = 14;
-        x = (yesRect.right - pgRect.left) + gap;
-        y = (yesRect.top - pgRect.top) + (yesRect.height - bh) / 2;
-
-        if (x > maxX) x = (yesRect.left - pgRect.left) - gap - bw;
-
-        x = clamp(x, minX, maxX);
-        y = clamp(y, minY, maxY);
-      } else {
-        // BIGGER jumps (moves more) + avoid YES zone
-        let tries = 0;
-
-        const curX = parseFloat(noBtn.style.left) || 0;
-        const curY = parseFloat(noBtn.style.top) || 0;
-
-        do {
-          const angle = Math.random() * Math.PI * 2;
-          const jump  = (Math.min(playground.clientWidth, playground.clientHeight) * 0.55) * (0.6 + Math.random()*0.6);
-
-          x = curX + Math.cos(angle) * jump;
-          y = curY + Math.sin(angle) * jump;
-
-          // fallback to random if out of bounds
-          if (x < minX || x > maxX) x = minX + Math.random() * (maxX - minX);
-          if (y < minY || y > maxY) y = minY + Math.random() * (maxY - minY);
-
-          const noRectLocal = { left:x, top:y, right:x+bw, bottom:y+bh };
-          tries++;
-          if (!rectsOverlap(noRectLocal, avoid) || tries > 25) break;
-        } while(true);
-
-        x = clamp(x, minX, maxX);
-        y = clamp(y, minY, maxY);
+      if (edge === 0) { // top
+        y = minY;
+        x = minX + Math.random() * (maxX - minX);
+      } else if (edge === 1) { // right
+        x = maxX;
+        y = minY + Math.random() * (maxY - minY);
+      } else if (edge === 2) { // bottom
+        y = maxY;
+        x = minX + Math.random() * (maxX - minX);
+      } else { // left
+        x = minX;
+        y = minY + Math.random() * (maxY - minY);
       }
 
-      noBtn.style.left = Math.round(x) + "px";
-      noBtn.style.top  = Math.round(y) + "px";
+      return { x: Math.round(clamp(x, minX, maxX)), y: Math.round(clamp(y, minY, maxY)) };
     }
 
-    // Initial placement
-    placeNo(true);
+    function moveNoToEdgeAvoidingYes(){
+      // Avoid placing NO on top of the YES area (expanded zone)
+      const yes = getLocalRect(yesBtn);
+      const avoid = {
+        left: yes.left - 20, top: yes.top - 20,
+        right: yes.right + 20, bottom: yes.bottom + 20
+      };
 
-    window.addEventListener("resize", () => placeNo(true));
+      const bw = noBtn.offsetWidth;
+      const bh = noBtn.offsetHeight;
 
-    // Dodge behavior:
-    // - desktop: pointerenter (hover)
-    // - phones: finger-near (pointermove) + pointerdown
-    let lastMove = 0;
-
-    function dodge(){
-      // wiggle!
-      noBtn.classList.remove("wiggle");
-      void noBtn.offsetWidth; // restart animation
-      noBtn.classList.add("wiggle");
-
-      placeNo(false);
+      for (let i = 0; i < 30; i++){
+        const p = randomEdgePosition();
+        const noLocal = { left: p.x, top: p.y, right: p.x + bw, bottom: p.y + bh };
+        if (!rectsOverlap(noLocal, avoid)){
+          noBtn.style.left = p.x + "px";
+          noBtn.style.top  = p.y + "px";
+          return;
+        }
+      }
+      // fallback
+      const p = randomEdgePosition();
+      noBtn.style.left = p.x + "px";
+      noBtn.style.top  = p.y + "px";
     }
 
-    noBtn.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      dodge();
-    });
+    function setStage(idx){
+      stageIdx = clamp(idx, 0, stages.length - 1);
+      const s = stages[stageIdx];
 
-    noBtn.addEventListener("pointerenter", () => {
-      if (!isCoarse) dodge();
-    });
+      noBtn.textContent = s.label;
+      hint.textContent = s.hint || "";
 
-    playground.addEventListener("pointermove", (e) => {
-      if (!isCoarse) return;
+      if (s.mode === "yes"){
+        noBtn.classList.add("turnYes");
+      } else {
+        noBtn.classList.remove("turnYes");
+      }
+    }
 
-      const now = Date.now();
-      if (now - lastMove < 35) return; // slightly faster reaction
-      lastMove = now;
+    function nextStage(){
+      if (stageIdx < stages.length - 1) setStage(stageIdx + 1);
+    }
 
-      const r = noBtn.getBoundingClientRect();
-      const cx = r.left + r.width/2;
-      const cy = r.top + r.height/2;
-      const dx = e.clientX - cx;
-      const dy = e.clientY - cy;
-      const dist = Math.hypot(dx, dy);
-
-      // Bigger distance = dodges more often on phones
-      const triggerDistance = 140;
-
-      if (dist < triggerDistance) dodge();
-    }, { passive: true });
-
-    // YES behavior
-    yesBtn.addEventListener("click", () => {
+    // YES action (both buttons can trigger this)
+    function onYes(){
       playground.style.display = "none";
       hint.style.display = "none";
 
@@ -368,10 +373,130 @@
       msg.innerHTML = `<div style="font-size:16px;opacity:.9;line-height:1.4">${customMessage}${sign}</div>`;
       result.style.display = "block";
 
-      burstConfetti(60);
+      burstConfetti(70);
       spawnHearts(18);
+    }
+
+    yesBtn.addEventListener("click", onYes);
+
+    // ---- Hold-to-click stage logic ----
+    let holdTimer = null;
+    let holdRAF = null;
+    let holdStart = 0;
+    let holdDone = false;
+
+    function clearHold(){
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      if (holdRAF) { cancelAnimationFrame(holdRAF); holdRAF = null; }
+      holdStart = 0;
+      holdDone = false;
+      noBtn.classList.remove("holding");
+      noBtn.style.setProperty("--hold-w", "0%");
+    }
+
+    function startHold(ms){
+      clearHold();
+      holdDone = false;
+      noBtn.classList.add("holding");
+      holdStart = performance.now();
+
+      const tick = () => {
+        const t = performance.now() - holdStart;
+        const pct = clamp((t / ms) * 100, 0, 100);
+        noBtn.style.setProperty("--hold-w", pct.toFixed(0) + "%");
+        if (pct < 100) holdRAF = requestAnimationFrame(tick);
+      };
+      holdRAF = requestAnimationFrame(tick);
+
+      holdTimer = setTimeout(() => {
+        holdDone = true;
+        clearHold();
+        nextStage();
+        // After succeeding the hold, it still runs (edge runner)
+        moveNoToEdgeAvoidingYes();
+      }, ms);
+    }
+
+    // Main interaction with NO button
+    function onNoAttemptStart(e){
+      e.preventDefault();
+
+      const s = stages[stageIdx];
+      if (s.mode === "yes"){
+        onYes();
+        return;
+      }
+
+      if (s.mode === "hold"){
+        startHold(s.holdMs || 1000);
+        return;
+      }
+
+      // tap stages: it runs away + advances
+      nextStage();
+      moveNoToEdgeAvoidingYes();
+    }
+
+    function onNoAttemptEnd(){
+      const s = stages[stageIdx];
+      // If we're in hold stage and they let go early -> it runs away (but does NOT advance)
+      if (s.mode === "hold"){
+        if (!holdDone){
+          clearHold();
+          moveNoToEdgeAvoidingYes();
+        }
+      }
+    }
+
+    // Make it also react on phones when finger gets near (except during hold stage)
+    let lastMove = 0;
+    function onPlaygroundMove(e){
+      if (!isCoarse) return;
+
+      const s = stages[stageIdx];
+      if (s.mode === "hold" || s.mode === "yes") return;
+
+      const now = Date.now();
+      if (now - lastMove < 35) return;
+      lastMove = now;
+
+      const r = noBtn.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const dist = Math.hypot(dx, dy);
+
+      // Bigger = moves more on phones
+      const triggerDistance = 115;
+
+      if (dist < triggerDistance){
+        nextStage();
+        moveNoToEdgeAvoidingYes();
+      }
+    }
+
+    // Pointer events (best for mobile + desktop)
+    noBtn.addEventListener("pointerdown", onNoAttemptStart);
+    noBtn.addEventListener("pointerup", onNoAttemptEnd);
+    noBtn.addEventListener("pointercancel", onNoAttemptEnd);
+
+    playground.addEventListener("pointermove", onPlaygroundMove, { passive: true });
+
+    // Init
+    setStage(0);
+    // Start on an edge (right side-ish)
+    requestAnimationFrame(() => {
+      moveNoToEdgeAvoidingYes();
     });
 
+    // Keep it visible on resize / orientation changes
+    window.addEventListener("resize", () => {
+      clearHold();
+      moveNoToEdgeAvoidingYes();
+    });
+
+    // Confetti
     function burstConfetti(n){
       confetti.innerHTML = "";
       for(let i=0;i<n;i++){
@@ -386,6 +511,7 @@
       setTimeout(()=> confetti.innerHTML="", 1600);
     }
 
+    // Hearts
     function spawnHearts(n){
       for(let i=0;i<n;i++){
         const heart = document.createElement("div");
@@ -401,7 +527,6 @@
       }
     }
 
-    // Ambient hearts
     (function ambient(){
       const count = 14;
       for(let i=0;i<count;i++){
@@ -420,3 +545,4 @@
   </script>
 </body>
 </html>
+
