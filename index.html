@@ -68,9 +68,8 @@
       display:flex;
       justify-content:center;
       align-items:center;
-      overflow:hidden;
+      overflow:hidden;            /* keeps NO inside */
       border-radius:18px;
-      /* subtle invisible padding feel */
     }
 
     button{
@@ -84,8 +83,8 @@
       transition: transform .08s ease, filter .08s ease;
       user-select:none;
       -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation; /* mobile-friendly */
-      min-height: 48px;          /* good tap target */
+      touch-action: manipulation;
+      min-height: 48px;
       min-width: 96px;
     }
 
@@ -111,8 +110,18 @@
       transform:none;
       z-index:3;
       transition: left .12s ease, top .12s ease;
-      touch-action: none; /* lets pointerdown fire reliably in mobile webviews */
+      touch-action: none; /* reliable pointerdown in mobile webviews */
     }
+
+    /* Fun "panic wiggle" */
+    @keyframes wiggle {
+      0% { transform: rotate(0deg); }
+      25% { transform: rotate(-6deg); }
+      50% { transform: rotate(6deg); }
+      75% { transform: rotate(-4deg); }
+      100% { transform: rotate(0deg); }
+    }
+    #noBtn.wiggle { animation: wiggle .18s ease-in-out; }
 
     .hint{
       text-align:center;
@@ -183,7 +192,6 @@
       100%{ transform: translateY(520px) rotate(520deg); opacity:0; }
     }
 
-    /* Small-screen polish */
     @media (max-width: 380px){
       button{ font-size:15px; padding: 13px 16px; min-width: 92px; }
       .hint{ font-size:12px; }
@@ -240,7 +248,6 @@
       const pgRect = playground.getBoundingClientRect();
       const yesRect = yesBtn.getBoundingClientRect();
 
-      // ensure we have up-to-date button sizes
       const bw = noBtn.offsetWidth;
       const bh = noBtn.offsetHeight;
 
@@ -250,7 +257,7 @@
       const maxX = Math.max(minX, playground.clientWidth - bw - pad);
       const maxY = Math.max(minY, playground.clientHeight - bh - pad);
 
-      // "avoid zone" around YES so NO doesn’t sit on top of it (better on phones)
+      // "avoid zone" around YES so NO doesn’t sit on top of it
       const avoid = {
         left:  (yesRect.left - pgRect.left) - 18,
         top:   (yesRect.top  - pgRect.top)  - 18,
@@ -261,26 +268,35 @@
       let x, y;
 
       if(initial){
-        // Start near YES, centered vertically
         const gap = 14;
         x = (yesRect.right - pgRect.left) + gap;
         y = (yesRect.top - pgRect.top) + (yesRect.height - bh) / 2;
 
-        // fallback left if no space
         if (x > maxX) x = (yesRect.left - pgRect.left) - gap - bw;
 
         x = clamp(x, minX, maxX);
         y = clamp(y, minY, maxY);
       } else {
-        // Try a few random positions until we find one not overlapping YES zone
+        // BIGGER jumps (moves more) + avoid YES zone
         let tries = 0;
+
+        const curX = parseFloat(noBtn.style.left) || 0;
+        const curY = parseFloat(noBtn.style.top) || 0;
+
         do {
-          x = minX + Math.random() * (maxX - minX);
-          y = minY + Math.random() * (maxY - minY);
+          const angle = Math.random() * Math.PI * 2;
+          const jump  = (Math.min(playground.clientWidth, playground.clientHeight) * 0.55) * (0.6 + Math.random()*0.6);
+
+          x = curX + Math.cos(angle) * jump;
+          y = curY + Math.sin(angle) * jump;
+
+          // fallback to random if out of bounds
+          if (x < minX || x > maxX) x = minX + Math.random() * (maxX - minX);
+          if (y < minY || y > maxY) y = minY + Math.random() * (maxY - minY);
 
           const noRectLocal = { left:x, top:y, right:x+bw, bottom:y+bh };
           tries++;
-          if (!rectsOverlap(noRectLocal, avoid) || tries > 20) break;
+          if (!rectsOverlap(noRectLocal, avoid) || tries > 25) break;
         } while(true);
 
         x = clamp(x, minX, maxX);
@@ -294,15 +310,19 @@
     // Initial placement
     placeNo(true);
 
-    // Re-position nicely on resize/orientation change remember phones rotate a lot
     window.addEventListener("resize", () => placeNo(true));
 
     // Dodge behavior:
-    // - On desktop: pointerenter is enough (hover)
-    // - On phones: we also dodge when finger gets close (pointermove),
-    //   so it feels “mouse-like” even without hover.
+    // - desktop: pointerenter (hover)
+    // - phones: finger-near (pointermove) + pointerdown
     let lastMove = 0;
+
     function dodge(){
+      // wiggle!
+      noBtn.classList.remove("wiggle");
+      void noBtn.offsetWidth; // restart animation
+      noBtn.classList.add("wiggle");
+
       placeNo(false);
     }
 
@@ -319,10 +339,9 @@
       if (!isCoarse) return;
 
       const now = Date.now();
-      if (now - lastMove < 40) return; // throttle
+      if (now - lastMove < 35) return; // slightly faster reaction
       lastMove = now;
 
-      // If finger is near the NO button, make it run
       const r = noBtn.getBoundingClientRect();
       const cx = r.left + r.width/2;
       const cy = r.top + r.height/2;
@@ -330,8 +349,8 @@
       const dy = e.clientY - cy;
       const dist = Math.hypot(dx, dy);
 
-      // Increase this if you want it to be "meaner"
-      const triggerDistance = 400;
+      // Bigger distance = dodges more often on phones
+      const triggerDistance = 140;
 
       if (dist < triggerDistance) dodge();
     }, { passive: true });
@@ -401,5 +420,3 @@
   </script>
 </body>
 </html>
-
-
