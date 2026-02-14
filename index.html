@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>💘 Valentine?</title>
+  <title>Valentine</title>
 
   <style>
     :root{
@@ -22,7 +22,7 @@
       min-height:100vh;
       display:grid;
       place-items:center;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       color:var(--text);
       background:
         radial-gradient(1200px 800px at 20% 10%, #fff3, transparent 60%),
@@ -67,7 +67,7 @@
       display:flex;
       justify-content:center;
       align-items:center;
-      overflow:hidden;            /* keeps NO inside */
+      overflow:hidden; /* keeps NO inside */
       border-radius:18px;
       box-shadow: inset 0 0 0 2px #00000010;
       background: #ffffff60;
@@ -87,6 +87,7 @@
       touch-action: manipulation;
       min-height: 48px;
       min-width: 96px;
+      white-space: nowrap;
     }
 
     button:active{
@@ -111,7 +112,6 @@
       z-index:3;
       transition: left .14s ease, top .14s ease;
       touch-action: none;
-      white-space: nowrap;
     }
 
     /* When NO becomes YES */
@@ -119,7 +119,7 @@
       background: var(--yes);
     }
 
-    /* Hold progress bar */
+    /* Hold progress bar (no extra text/hints needed) */
     #noBtn.holding{
       filter: brightness(0.98);
     }
@@ -167,7 +167,7 @@
       font-size:22px;
     }
 
-    /* floating hearts background */
+    /* floating hearts background (shapes, not emojis) */
     .heart{
       position:absolute;
       width:16px; height:16px;
@@ -220,18 +220,18 @@
   <div class="card">
     <div class="confetti" id="confetti"></div>
 
-    <h1 id="question">Do you wanna be my Valentine? 💘</h1>
-    <p id="sub">Be honest… but choose wisely 😄</p>
+    <h1 id="question">Do you want to be my Valentine?</h1>
+    <p id="sub">Be honest, but choose wisely.</p>
 
     <div class="playground" id="playground">
-      <button id="yesBtn">Yes 💞</button>
-      <button id="noBtn" aria-label="No button">No 🙃</button>
+      <button id="yesBtn">Yes</button>
+      <button id="noBtn" aria-label="No button">No</button>
     </div>
 
-    <div class="hint" id="hint"></div>
+    <div class="hint" id="hint">Try to reject me.</div>
 
     <div class="result" id="result">
-      <h2>YAAAY!! 🥰💖</h2>
+      <h2>There was no escape.</h2>
       <div id="msg"></div>
     </div>
   </div>
@@ -240,7 +240,7 @@
     // ====== PERSONALIZE HERE ======
     const herName = "";      // e.g. "Ana"
     const yourName = "";     // e.g. "Robert"
-    const customMessage = "Date locked in. ❤️ I can’t wait to celebrate with you!";
+    const customMessage = "See you on Valentine's Day.";
     // =============================
 
     const playground = document.getElementById("playground");
@@ -250,19 +250,22 @@
     const msg = document.getElementById("msg");
     const question = document.getElementById("question");
     const sub = document.getElementById("sub");
-    const hint = document.getElementById("hint");
     const confetti = document.getElementById("confetti");
 
     const isCoarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
 
-    // Stages: NO -> ... -> becomes YES
+    // Stages: red button text evolves, one stage requires a hold, last turns green.
     const stages = [
-      { label: "No 🙃",              hint: "Try to press it 😈",            mode: "tap"  },
-      { label: "Are you sure? 🤨",   hint: "Mhm… really?",                 mode: "tap"  },
-      { label: "REALLY sure? 😳",    hint: "Okay then… prove it 😌",       mode: "tap"  },
-      { label: "Press & hold… 🫣",   hint: "Hold for 1 second 👇",         mode: "hold", holdMs: 1000 },
-      { label: "Last chance! 😈",    hint: "No refunds 😇",                mode: "tap"  },
-      { label: "Okay fine… YES 💞",  hint: "Good choice 😌",               mode: "yes"  },
+      { label: "No", mode: "tap" },
+      { label: "Are you sure?", mode: "tap" },
+      { label: "Hold on, let's think about it.", mode: "tap" },
+      { label: "Think again.", mode: "tap" },
+      { label: "Are you colorblind? You should tap on green!", mode: "tap" },
+      { label: "The green button is right there.", mode: "tap" },
+      { label: "Still trying to say no?", mode: "tap" },
+      { label: "Stand by your decision.", mode: "hold", holdMs: 1000 },
+      { label: "That did not work.", mode: "tap" },
+      { label: "Fine. Yes.", mode: "yes" }
     ];
     let stageIdx = 0;
 
@@ -285,7 +288,7 @@
       return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
     }
 
-    // Edge runner position: always on perimeter of playground
+    // Edge runner: position always on the perimeter
     function randomEdgePosition(){
       const bw = noBtn.offsetWidth;
       const bh = noBtn.offsetHeight;
@@ -317,7 +320,6 @@
     }
 
     function moveNoToEdgeAvoidingYes(){
-      // Avoid placing NO on top of the YES area (expanded zone)
       const yes = getLocalRect(yesBtn);
       const avoid = {
         left: yes.left - 20, top: yes.top - 20,
@@ -327,7 +329,7 @@
       const bw = noBtn.offsetWidth;
       const bh = noBtn.offsetHeight;
 
-      for (let i = 0; i < 30; i++){
+      for (let i = 0; i < 35; i++){
         const p = randomEdgePosition();
         const noLocal = { left: p.x, top: p.y, right: p.x + bw, bottom: p.y + bh };
         if (!rectsOverlap(noLocal, avoid)){
@@ -336,7 +338,6 @@
           return;
         }
       }
-      // fallback
       const p = randomEdgePosition();
       noBtn.style.left = p.x + "px";
       noBtn.style.top  = p.y + "px";
@@ -347,27 +348,21 @@
       const s = stages[stageIdx];
 
       noBtn.textContent = s.label;
-      hint.textContent = s.hint || "";
 
-      if (s.mode === "yes"){
-        noBtn.classList.add("turnYes");
-      } else {
-        noBtn.classList.remove("turnYes");
-      }
+      if (s.mode === "yes") noBtn.classList.add("turnYes");
+      else noBtn.classList.remove("turnYes");
     }
 
     function nextStage(){
       if (stageIdx < stages.length - 1) setStage(stageIdx + 1);
     }
 
-    // YES action (both buttons can trigger this)
     function onYes(){
       playground.style.display = "none";
-      hint.style.display = "none";
 
-      const namePart = herName ? `, ${herName}` : "";
-      question.textContent = `Best decision ever${namePart}! 💘`;
-      sub.textContent = "Okay… now you’re officially my Valentine 😌";
+      // keep it simple, no emojis
+      question.textContent = "There was no escape.";
+      sub.textContent = herName ? `See you soon, ${herName}.` : "See you soon.";
 
       const sign = yourName ? `<br><br>— <b>${yourName}</b>` : "";
       msg.innerHTML = `<div style="font-size:16px;opacity:.9;line-height:1.4">${customMessage}${sign}</div>`;
@@ -379,7 +374,7 @@
 
     yesBtn.addEventListener("click", onYes);
 
-    // ---- Hold-to-click stage logic ----
+    // ---- Hold stage logic ----
     let holdTimer = null;
     let holdRAF = null;
     let holdStart = 0;
@@ -412,12 +407,10 @@
         holdDone = true;
         clearHold();
         nextStage();
-        // After succeeding the hold, it still runs (edge runner)
         moveNoToEdgeAvoidingYes();
       }, ms);
     }
 
-    // Main interaction with NO button
     function onNoAttemptStart(e){
       e.preventDefault();
 
@@ -432,23 +425,19 @@
         return;
       }
 
-      // tap stages: it runs away + advances
       nextStage();
       moveNoToEdgeAvoidingYes();
     }
 
     function onNoAttemptEnd(){
       const s = stages[stageIdx];
-      // If we're in hold stage and they let go early -> it runs away (but does NOT advance)
-      if (s.mode === "hold"){
-        if (!holdDone){
-          clearHold();
-          moveNoToEdgeAvoidingYes();
-        }
+      if (s.mode === "hold" && !holdDone){
+        clearHold();
+        moveNoToEdgeAvoidingYes();
       }
     }
 
-    // Make it also react on phones when finger gets near (except during hold stage)
+    // Phone-only: if finger gets close, it runs along the edges (no stage skipping)
     let lastMove = 0;
     function onPlaygroundMove(e){
       if (!isCoarse) return;
@@ -467,16 +456,11 @@
       const dy = e.clientY - cy;
       const dist = Math.hypot(dx, dy);
 
-      // Bigger = moves more on phones
-      const triggerDistance = 115;
-
-      if (dist < triggerDistance){
-        nextStage();
-        moveNoToEdgeAvoidingYes();
-      }
+      const triggerDistance = 110; // increase if you want it even more reactive
+      if (dist < triggerDistance) moveNoToEdgeAvoidingYes();
     }
 
-    // Pointer events (best for mobile + desktop)
+    // Pointer events (great for phone webviews)
     noBtn.addEventListener("pointerdown", onNoAttemptStart);
     noBtn.addEventListener("pointerup", onNoAttemptEnd);
     noBtn.addEventListener("pointercancel", onNoAttemptEnd);
@@ -485,12 +469,8 @@
 
     // Init
     setStage(0);
-    // Start on an edge (right side-ish)
-    requestAnimationFrame(() => {
-      moveNoToEdgeAvoidingYes();
-    });
+    requestAnimationFrame(() => moveNoToEdgeAvoidingYes());
 
-    // Keep it visible on resize / orientation changes
     window.addEventListener("resize", () => {
       clearHold();
       moveNoToEdgeAvoidingYes();
@@ -545,4 +525,3 @@
   </script>
 </body>
 </html>
-
