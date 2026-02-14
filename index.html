@@ -59,7 +59,6 @@
       opacity:.85;
     }
 
-    /* Contained playground */
     .playground{
       position:relative;
       width:100%;
@@ -67,7 +66,7 @@
       display:flex;
       justify-content:center;
       align-items:center;
-      overflow:hidden; /* keeps NO inside */
+      overflow:hidden;
       border-radius:18px;
       box-shadow: inset 0 0 0 2px #00000010;
       background: #ffffff60;
@@ -102,7 +101,6 @@
       z-index:2;
     }
 
-    /* NO is an edge-runner inside the playground */
     #noBtn{
       background:var(--no);
       color:white;
@@ -114,12 +112,11 @@
       touch-action: none;
     }
 
-    /* When NO becomes YES */
     #noBtn.turnYes{
       background: var(--yes);
     }
 
-    /* Hold progress bar (no extra text/hints needed) */
+    /* Hold progress bar */
     #noBtn.holding{
       filter: brightness(0.98);
     }
@@ -162,12 +159,7 @@
       box-shadow: inset 0 0 0 2px #00000010;
     }
 
-    .result h2{
-      margin:0 0 8px;
-      font-size:22px;
-    }
-
-    /* floating hearts background (shapes, not emojis) */
+    /* heart shapes in background (not emojis) */
     .heart{
       position:absolute;
       width:16px; height:16px;
@@ -231,7 +223,6 @@
     <div class="hint" id="hint">Try to reject me.</div>
 
     <div class="result" id="result">
-      <h2>There was no escape.</h2>
       <div id="msg"></div>
     </div>
   </div>
@@ -240,7 +231,7 @@
     // ====== PERSONALIZE HERE ======
     const herName = "";      // e.g. "Ana"
     const yourName = "";     // e.g. "Robert"
-    const customMessage = "See you on Valentine's Day.";
+    const customMessage = ""; // optional extra line (leave blank if not needed)
     // =============================
 
     const playground = document.getElementById("playground");
@@ -250,11 +241,11 @@
     const msg = document.getElementById("msg");
     const question = document.getElementById("question");
     const sub = document.getElementById("sub");
+    const hint = document.getElementById("hint");
     const confetti = document.getElementById("confetti");
 
     const isCoarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
 
-    // Stages: red button text evolves, one stage requires a hold, last turns green.
     const stages = [
       { label: "No", mode: "tap" },
       { label: "Are you sure?", mode: "tap" },
@@ -263,7 +254,7 @@
       { label: "Are you colorblind? You should tap on green!", mode: "tap" },
       { label: "The green button is right there.", mode: "tap" },
       { label: "Still trying to say no?", mode: "tap" },
-      { label: "Stand by your decision.", mode: "hold", holdMs: 1000 },
+      { label: "Commit to it.", mode: "hold", holdMs: 1000 },   // changed from “press and hold…”
       { label: "That did not work.", mode: "tap" },
       { label: "Fine. Yes.", mode: "yes" }
     ];
@@ -288,7 +279,6 @@
       return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
     }
 
-    // Edge runner: position always on the perimeter
     function randomEdgePosition(){
       const bw = noBtn.offsetWidth;
       const bh = noBtn.offsetHeight;
@@ -302,29 +292,17 @@
       const edge = Math.floor(Math.random() * 4);
       let x, y;
 
-      if (edge === 0) { // top
-        y = minY;
-        x = minX + Math.random() * (maxX - minX);
-      } else if (edge === 1) { // right
-        x = maxX;
-        y = minY + Math.random() * (maxY - minY);
-      } else if (edge === 2) { // bottom
-        y = maxY;
-        x = minX + Math.random() * (maxX - minX);
-      } else { // left
-        x = minX;
-        y = minY + Math.random() * (maxY - minY);
-      }
+      if (edge === 0) { y = minY; x = minX + Math.random() * (maxX - minX); }
+      else if (edge === 1) { x = maxX; y = minY + Math.random() * (maxY - minY); }
+      else if (edge === 2) { y = maxY; x = minX + Math.random() * (maxX - minX); }
+      else { x = minX; y = minY + Math.random() * (maxY - minY); }
 
       return { x: Math.round(clamp(x, minX, maxX)), y: Math.round(clamp(y, minY, maxY)) };
     }
 
     function moveNoToEdgeAvoidingYes(){
       const yes = getLocalRect(yesBtn);
-      const avoid = {
-        left: yes.left - 20, top: yes.top - 20,
-        right: yes.right + 20, bottom: yes.bottom + 20
-      };
+      const avoid = { left: yes.left - 20, top: yes.top - 20, right: yes.right + 20, bottom: yes.bottom + 20 };
 
       const bw = noBtn.offsetWidth;
       const bh = noBtn.offsetHeight;
@@ -359,14 +337,15 @@
 
     function onYes(){
       playground.style.display = "none";
+      hint.style.display = "none";            // remove "Try to reject me." on final screen
 
-      // keep it simple, no emojis
-      question.textContent = "There was no escape.";
-      sub.textContent = herName ? `See you soon, ${herName}.` : "See you soon.";
+      question.textContent = "There was no escape.";  // only once
+      sub.textContent = "See you soon.";              // no Valentine’s Day line
 
       const sign = yourName ? `<br><br>— <b>${yourName}</b>` : "";
-      msg.innerHTML = `<div style="font-size:16px;opacity:.9;line-height:1.4">${customMessage}${sign}</div>`;
-      result.style.display = "block";
+      const extra = customMessage ? `<div style="margin-top:4px">${customMessage}</div>` : "";
+      msg.innerHTML = `<div style="font-size:16px;opacity:.9;line-height:1.4">${extra}${sign}</div>`;
+      result.style.display = (customMessage || yourName) ? "block" : "none";
 
       burstConfetti(70);
       spawnHearts(18);
@@ -415,15 +394,8 @@
       e.preventDefault();
 
       const s = stages[stageIdx];
-      if (s.mode === "yes"){
-        onYes();
-        return;
-      }
-
-      if (s.mode === "hold"){
-        startHold(s.holdMs || 1000);
-        return;
-      }
+      if (s.mode === "yes"){ onYes(); return; }
+      if (s.mode === "hold"){ startHold(s.holdMs || 1000); return; }
 
       nextStage();
       moveNoToEdgeAvoidingYes();
@@ -437,7 +409,7 @@
       }
     }
 
-    // Phone-only: if finger gets close, it runs along the edges (no stage skipping)
+    // Phone-only: if finger gets close, it runs along edges (no stage skipping)
     let lastMove = 0;
     function onPlaygroundMove(e){
       if (!isCoarse) return;
@@ -452,19 +424,15 @@
       const r = noBtn.getBoundingClientRect();
       const cx = r.left + r.width / 2;
       const cy = r.top + r.height / 2;
-      const dx = e.clientX - cx;
-      const dy = e.clientY - cy;
-      const dist = Math.hypot(dx, dy);
+      const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
 
-      const triggerDistance = 110; // increase if you want it even more reactive
+      const triggerDistance = 110;
       if (dist < triggerDistance) moveNoToEdgeAvoidingYes();
     }
 
-    // Pointer events (great for phone webviews)
     noBtn.addEventListener("pointerdown", onNoAttemptStart);
     noBtn.addEventListener("pointerup", onNoAttemptEnd);
     noBtn.addEventListener("pointercancel", onNoAttemptEnd);
-
     playground.addEventListener("pointermove", onPlaygroundMove, { passive: true });
 
     // Init
@@ -476,7 +444,6 @@
       moveNoToEdgeAvoidingYes();
     });
 
-    // Confetti
     function burstConfetti(n){
       confetti.innerHTML = "";
       for(let i=0;i<n;i++){
@@ -491,7 +458,6 @@
       setTimeout(()=> confetti.innerHTML="", 1600);
     }
 
-    // Hearts
     function spawnHearts(n){
       for(let i=0;i<n;i++){
         const heart = document.createElement("div");
